@@ -4,7 +4,7 @@
             <div class="list">
                 <label class="item item-input" ng-class="{'has-errors':registerForm.email.$invalid	&&	
                         registerForm.$submitted}">
-                    <input name="email" type="email" placeholder="Email" ng-model="user.email" required>
+                    <input pattern=".{1,}@[_a-z0-9A-Z]+(\.[a-z0-9A-Z]+)+" name="email" type="email" placeholder="Email" ng-model="user.email" required>
                 </label>
                 <label class="item item-input">
                     <input name="firstName" type="text" placeholder="FirstName" ng-model="user.firstName" required>
