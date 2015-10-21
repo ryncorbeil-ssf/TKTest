@@ -107,8 +107,9 @@ function($scope, $state, UserService, $ionicHistory, $window){
 
 
 .controller('LobbyCtrl',['$scope', '$state', '$ionicHistory',
-'UserService', '$window',
-    function($scope, $state, $ionicHistory, UserService, $window) {
+'UserService', '$window', 'ServerQuestionService', 'TKQuestionsService',
+    function($scope, $state, $ionicHistory, UserService, $window, ServerQuestionService,
+    TKQuestionsService) {
         $scope.logout = function()
         {
             UserService.logout($window.localStorage.token)
@@ -128,4 +129,69 @@ function($scope, $state, UserService, $ionicHistory, $window){
                     alert("Could not logout at this moment, try again.");
                 });
         };
+        
+        //Get Questions Initially if they are not already stored
+        if(TKQuestionsService.questionsLength() === 0)
+            getQuestions();
+            function getQuestions()
+            {
+                ServerQuestionService.all($window.localStorage['token'])
+                .then(function(response) {
+                if (response.status === 200) {
+                var questions = response.data;
+                TKQuestionsService.setQuestions(questions);
+                } else {
+                // invalid response
+                confirmPrompt();
+                }
+            }, function(response) {
+                // something went wrong
+                confirmPrompt();
+            });
+            }
+            function confirmPrompt()
+            {
+                var response = confirm("The questions could not be retrieved at this time, do you want to try again?");
+                if (response == true) {
+                    getQuestions();
+                }
+            }
+            $scope.takeTestButtonTapped = function()
+            {
+                if(TKQuestionsService.questionsLength() === 0)
+                    getQuestions();
+                else {
+                    $state.go('test.detail',{testID:1});
+                }
+            };
+}])
+
+.controller('TestCtrl', ['$scope', 'testInfo', '$stateParams', '$state',
+function($scope, testInfo, $stateParams, $state) {
+    //testInfo is passed in the router to obtain the questions
+    var qNumber = $stateParams.testID;
+    $scope.title = "Question #"+qNumber;
+    
+    $scope.buttonClicked = function ( option ) {
+        if(option === "A") {
+            console.log("Chose A");
+        }
+        else if(option === "B") {
+            console.log("Chose B");
+        }
+        var nextqNumber = Number(qNumber) +1;
+        if(nextqNumber>30) {
+            $state.go('results');
+        }else {
+            $state.go('test.detail',{testID:nextqNumber});
+        }
+    };
+    testInfo.forEach(function(infoDict){
+        if(infoDict.Answer_ID === "A"){
+            $scope.questionA = infoDict;
+        }
+        if(infoDict.Answer_ID === "B"){
+            $scope.questionB = infoDict;
+        }
+    });
 }]);

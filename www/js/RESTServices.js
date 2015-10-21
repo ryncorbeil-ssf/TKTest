@@ -1,4 +1,4 @@
-angular.module('RESTConnection',	[])
+angular.module('RESTConnection',[])
     .constant('ENDPOINT_URL','https://tktest-backend-rcorbeil.c9.io/api/')
     .service('UserService',['$http','ENDPOINT_URL',
     function($http,	ENDPOINT_URL){
@@ -22,4 +22,18 @@ angular.module('RESTConnection',	[])
             }
             });
         };
-}]);
+    }])
+
+    .service('ServerQuestionService', ['$http', 'ENDPOINT_URL',
+    function ($http, ENDPOINT_URL) {
+        var service = this,
+        path = 'Questions/';
+        function getUrl() {
+            return ENDPOINT_URL + path;
+        }
+        service.all = function (token) {
+            return $http.get(getUrl(), {
+                params: { access_token: token }
+        });
+        };
+    }]);
