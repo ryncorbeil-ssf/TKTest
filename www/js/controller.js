@@ -2,7 +2,19 @@ angular.module('starter.controllers',[])
 .controller('LoginCtrl',['$scope', '$state', 'UserService', '$ionicHistory', '$window',
 function($scope, $state, UserService, $ionicHistory, $window){
     $scope.user	={};
-
+    var rememberMeValue;
+    if($window.localStorage["rememberMe"] === undefined || $window.localStorage["rememberMe"] == "true") {
+        rememberMeValue = true;
+    }else {
+        rememberMeValue = false;
+    }
+       
+    $scope.checkbox = {
+        rememberMe : rememberMeValue
+    };
+    if($window.localStorage["username"]!== undefined && rememberMeValue === true) {
+        $scope.user.email = $window.localStorage["username"];
+    }
     $scope.loginSubmitForm=function(form) {
         if(form.$valid) {
          UserService.login($scope.user)
@@ -17,6 +29,15 @@ function($scope, $state, UserService, $ionicHistory, $window){
                       disableBack: true
                     });
                     $state.go('lobby');
+                    $window.localStorage["rememberMe"] = $scope.checkbox.rememberMe;
+                    if($scope.checkbox.rememberMe) {
+                        $window.localStorage["username"] = $scope.user.email;
+                    }else {
+                        delete $window.localStorage["username"];
+                        $scope.user.email = "";
+                    }
+                    $scope.user.password = "";
+                    form.$setPristine();
                 } else {
                     // invalid response
                     alert("Something went wrong, try again.");
@@ -42,6 +63,16 @@ function($scope, $state, UserService, $ionicHistory, $window){
     $scope.user={};
     $scope.repeatPassword={};
     
+    function resetFields()
+    {
+        $scope.user.email = "";
+        $scope.user.firstName = "";
+        $scope.user.lastName = "";
+        $scope.user.organization = "";
+        $scope.user.password = "";
+        $scope.repeatPassword.password = "";
+    }
+    
     //Required to get the access token
     function loginAfterRegister()
     {
@@ -61,10 +92,12 @@ function($scope, $state, UserService, $ionicHistory, $window){
         // invalid response
         $state.go('landing');
         }
+        resetFields();
         }, function(response) {
         // something went wrong
         console.log(response);
         $state.go('landing');
+        resetFields();
         });
     }
     
@@ -77,6 +110,7 @@ function($scope, $state, UserService, $ionicHistory, $window){
                 .then(function(response) {
                     if (response.status === 200) {
                         loginAfterRegister();
+                        form.$setPristine(); 
                         //Should return a token
                         console.log(response);
                         $ionicHistory.nextViewOptions({
@@ -107,9 +141,15 @@ function($scope, $state, UserService, $ionicHistory, $window){
 
 
 .controller('LobbyCtrl',['$scope', '$state', '$ionicHistory',
-'UserService', '$window', 'ServerQuestionService', 'TKQuestionsService',
+'UserService', '$window', 'ServerQuestionService', 'TKQuestionsService', 'TKAnswersService',
     function($scope, $state, $ionicHistory, UserService, $window, ServerQuestionService,
-    TKQuestionsService) {
+    TKQuestionsService, TKAnswersService) {
+        $scope.$on('$ionicView.enter', function() {
+         // Code you want executed every time view is opened
+            console.log("reset");
+            TKAnswersService.resetAnswers();
+            console.log(TKAnswersService.getAnswers());
+        });
         $scope.logout = function()
         {
             UserService.logout($window.localStorage.token)
@@ -167,15 +207,18 @@ function($scope, $state, UserService, $ionicHistory, $window){
         };
 }])
 
-.controller('ResultsCtrl', ['$scope', 'TKAnswersService', '$ionicHistory', '$state',
-function($scope, TKAnswersService, $ionicHistory, $state) {
+.controller('ResultsCtrl', ['$scope', 'TKAnswersService', '$ionicHistory', '$state', 'TKResultsButtonService',
+function($scope, TKAnswersService, $ionicHistory, $state, TKResultsButtonService ) {
     $scope.labels = ["Competing", "Collaborating", "Compromising", "Avoiding", "Accommodating"];
-    var answersInfo = TKAnswersService.getAnswers();
-    $scope.data = [[returnPercentage(answersInfo["competing"]), 
-        returnPercentage(answersInfo["collaborating"]), 
-        returnPercentage(answersInfo["compromising"]),
-        returnPercentage(answersInfo["avoiding"]),
-        returnPercentage(answersInfo["accommodating"])]];
+    $scope.$on('$ionicView.enter', function() {
+        $scope.shouldShowButton = TKResultsButtonService.getShouldShowMenuButton();
+        var answersInfo = TKAnswersService.getAnswers();
+        $scope.data = [[returnPercentage(answersInfo["competing"]), 
+            returnPercentage(answersInfo["collaborating"]), 
+            returnPercentage(answersInfo["compromising"]),
+            returnPercentage(answersInfo["avoiding"]),
+            returnPercentage(answersInfo["accommodating"])]];
+    });
     $scope.options = {
         scaleIntegersOnly: true,
         animation: false,
@@ -212,13 +255,70 @@ function($scope, TKAnswersService, $ionicHistory, $state) {
     };
 }])
 
+.controller('HistoryCtrl', ['$scope', 'ServerAnswersService', '$window', '$state', 'TKAnswersService', 'TKResultsButtonService',
+    function($scope, ServerAnswersService, $window, $state, TKAnswersService, TKResultsButtonService){
+        $scope.tests = [];
+        performRequest();
+        function performRequest()
+        {
+            ServerAnswersService.all($window.localStorage['userID'], $window.localStorage['token'])
+            .then(function(response) {
+                if (response.status === 200) {
+                    $scope.tests = response.data;
+                } else {
+                    // invalid
+                    confirmPrompt();
+                }
+            }, function(response) {
+                // something went wrong
+                console.log(response);
+                confirmPrompt();
+            });
+        }
+        function confirmPrompt()
+        {
+           var response = confirm("The tests could not be retrieved at the moment, do you want to try again?");
+           if (response == true) {
+               performRequest();
+           }
+        }
+        $scope.goToResult = function(test)
+        {
+            var answers = {
+            "competing": test.competing,
+            "collaborating": test.collaborating,
+            "compromising": test.compromising,
+            "avoiding": test.avoiding,
+            "accommodating": test.accommodating
+            };
+            TKAnswersService.setAnswers(answers);
+            TKResultsButtonService.setShouldShowMenuButton(false);
+            $state.go('results');
+        };
+        $scope.buttonClicked = function () {
+                performRequest();
+        };
+    }
+    
+])
+
 .controller('TestCtrl', ['$scope', 'testInfo', '$stateParams', '$state','$window',
-        'TKQuestionsService', 'TKAnswersService', 'ServerAnswersService', '$ionicHistory',
+        'TKQuestionsService', 'TKAnswersService', 'ServerAnswersService', '$ionicHistory', 'TKResultsButtonService',
 function($scope, testInfo, $stateParams, $state, $window,
-        TKQuestionsService, TKAnswersService, ServerAnswersService, $ionicHistory) {
+        TKQuestionsService, TKAnswersService, ServerAnswersService, $ionicHistory, TKResultsButtonService) {
     //testInfo is passed in the router to obtain the questions
     var qNumber = $stateParams.testID;
     $scope.title = "Question #"+qNumber;
+    
+    $scope.$on("$ionicView.beforeEnter", function(){
+        var lastQuestionNumber = TKAnswersService.getLastQuestionNumber();
+        if(parseInt(qNumber)<lastQuestionNumber)
+        {
+            TKAnswersService.setLastQuestionNumber(lastQuestionNumber-1);
+            TKAnswersService.eraseLastAnswer();
+        }
+        TKAnswersService.setLastQuestionNumber(parseInt(qNumber));
+    });
     
     $scope.buttonClicked = function ( option ) {
         var category = $scope["question"+option].Style;
@@ -229,12 +329,13 @@ function($scope, testInfo, $stateParams, $state, $window,
             performRequest();
         }else {
             $state.go('test.detail',{testID:nextqNumber});
+            TKResultsButtonService.setShouldShowMenuButton(true);
         }
     };
     
     function performRequest()
     {
-        var answersDict = TKAnswersService.getAnswers();
+        var answersDict = angular.copy(TKAnswersService.getAnswers());
         answersDict["userID"] = $window.localStorage['userID'];
         var date = new Date();
         answersDict["createDate"] = date.toUTCString();
@@ -245,6 +346,7 @@ function($scope, testInfo, $stateParams, $state, $window,
                   disableBack: true
                });
                $state.go('results');
+               TKResultsButtonService.setShouldShowMenuButton(true);
              } else {
                 // invalid response
                 confirmPrompt();

@@ -32,15 +32,62 @@ angular.module('TKServicesModule', [])
         "accommodating": 0
     };
     var answers = {};
+    var lastQuestionNumber = 0;
+    var categoriesStack = [];
     
+    service.setLastQuestionNumber = function(qNumber){
+        lastQuestionNumber = qNumber;  
+    };
+   
+    service.getLastQuestionNumber = function() {
+        return lastQuestionNumber;  
+    };
+    
+    service.resetAnswers = function()
+    {
+        lastQuestionNumber = 0;
+        for (var property in answerCategories) {
+            if (answerCategories.hasOwnProperty(property)) {
+                answerCategories[property] = 0;
+            }
+        }
+    };
     service.saveAnswer = function(questionNumber, answerCategory, option)
     {
         answerCategories[answerCategory.toLowerCase()]++;
         answers[questionNumber] = option;
+        categoriesStack.push(answerCategory);
+    };
+
+    service.eraseLastAnswer = function()
+    {
+        answerCategories[categoriesStack.pop().toLowerCase()]--;
     };
 
     service.getAnswers = function()
     {
          return answerCategories;
+    };
+    
+    service.setAnswers = function(answers)
+    {
+        answerCategories = answers;
+    };
+})
+
+.service('TKResultsButtonService', function()
+{
+    var service = this;
+   
+    var shouldShowButton = false;
+   
+    service.setShouldShowMenuButton = function(show)
+    {
+        shouldShowButton = show;
+    };
+   
+    service.getShouldShowMenuButton = function()
+    {
+        return shouldShowButton;
     };
 });

@@ -56,4 +56,10 @@ angular.module('RESTConnection',[])
             }
          }); 
       };
+      service.all = function(userID, token)
+      {
+           return $http.get(getUrl()+"?filter[where][userID]="+userID,{
+              params: { access_token: token }
+           });
+      };
     }]);
