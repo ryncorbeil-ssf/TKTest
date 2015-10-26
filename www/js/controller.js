@@ -38,7 +38,10 @@ function($scope, $state, UserService, $ionicHistory, $window, SSFAlertsService){
                     }
                     $scope.user.password = "";
                     form.$setPristine();
-                } else {
+                } else if(response.status === 401)
+                {
+                    SSFAlertsService.showAlert("Title", "Incorrect username or password")
+                }else {
                     // invalid response
                     SSFAlertsService.showAlert("Title", "Something went wrong, try again.")
                 }
@@ -157,6 +160,8 @@ function($scope, $state, UserService, $ionicHistory, $window, SSFAlertsService){
                 //The successful code for logout is 204
                 if(response.status === 204)
                 {
+                    delete $window.localStorage['token'];
+                    delete $window.localStorage['userID'];
                     $ionicHistory.nextViewOptions({
                     historyRoot: true,
                     disableBack: true
@@ -181,7 +186,7 @@ function($scope, $state, UserService, $ionicHistory, $window, SSFAlertsService){
             if (response.status === 200) {
             var questions = response.data;
             TKQuestionsService.setQuestions(questions);
-            } else {
+            } else if (response.status !== 401) {
             // invalid response
             confirmPrompt();
             }
@@ -280,7 +285,7 @@ function($scope, TKAnswersService, $ionicHistory, $state, TKResultsButtonService
             .then(function(response) {
                 if (response.status === 200) {
                     $scope.tests = response.data;
-                } else {
+                } else if (response.status !== 401) {
                     // invalid
                     confirmPrompt();
                 }
@@ -375,7 +380,7 @@ function($scope, testInfo, $stateParams, $state, $window,
                });
                $state.go('results');
                TKResultsButtonService.setShouldShowMenuButton(true);
-             } else {
+             } else if (response.status !== 401) {
                 // invalid response
                 confirmPrompt();
              }

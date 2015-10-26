@@ -6,7 +6,7 @@
 angular.module('starter', ['ionic', 'starter.controllers', 'RESTConnection', 'TKServicesModule',
                           'chart.js', 'SSFAlerts'])
 
-.run(function($ionicPlatform) {
+.run(["$ionicPlatform", "$window", "$state", function($ionicPlatform, $window, $state) {
   $ionicPlatform.ready(function() {
     // Hide the accessory bar by default (remove this to show the accessory bar above the keyboard
     // for form inputs)
@@ -16,8 +16,42 @@ angular.module('starter', ['ionic', 'starter.controllers', 'RESTConnection', 'TK
     if(window.StatusBar) {
       StatusBar.styleDefault();
     }
+   
+    if($window.localStorage["userID"]!==undefined)
+    {
+  $ionicHistory.nextViewOptions({
+            historyRoot: true,
+            disableBack: true
+        });
+        $state.go("lobby");
+    }
   });
-})
+}])
+
+
+.run(["$rootScope", "$ionicLoading", function($rootScope, $ionicLoading) {
+  $rootScope.$on('loading:show', function() {
+    $ionicLoading.show({
+      template: '<ion-spinner></ion-spinner>'
+    });
+  });
+  $rootScope.$on('loading:hide', function() {
+    $ionicLoading.hide();
+  });
+}])
+
+
+.run(["$rootScope", "$ionicHistory", "$state", "$window", function($rootScope, $ionicHistory, $state, $window) {
+  $rootScope.$on('request:auth', function() {
+    $ionicHistory.nextViewOptions({
+      historyRoot: true,
+      disableBack: true
+    });
+    delete $window.localStorage['token'];
+    delete $window.localStorage['userID'];
+    $state.go('landing');
+  });  
+}])
 
 .config(function($stateProvider,$urlRouterProvider){
   $urlRouterProvider.otherwise('/');
@@ -67,5 +101,32 @@ angular.module('starter', ['ionic', 'starter.controllers', 'RESTConnection', 'TK
     templateUrl: 'templates/history.html',
     controller:'HistoryCtrl'
     });
-});
+})
 
+.config(['$httpProvider', function($httpProvider) {
+  $httpProvider.interceptors.push(function($rootScope) {
+    return {
+      request: function(config) {
+        $rootScope.$broadcast('loading:show');
+        return config;
+      },
+      response: function(response) {
+        $rootScope.$broadcast('loading:hide');
+        return response;
+      },
+      requestError: function(reason) {
+        $rootScope.$broadcast('loading:hide');
+        return reason;
+      },
+      responseError: function(response) {
+        $rootScope.$broadcast('loading:hide');
+        if(response.status === 401 && (response.data.error.code === "INVALID_TOKEN" ||
+                                      response.data.error.code === "AUTHORIZATION_REQUIRED"))
+        {
+          $rootScope.$broadcast('request:auth');
+        }
+        return response;
+      }
+    };
+  });
+}]);
