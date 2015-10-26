@@ -1,6 +1,6 @@
 angular.module('starter.controllers',[])
-.controller('LoginCtrl',['$scope', '$state', 'UserService', '$ionicHistory', '$window',
-function($scope, $state, UserService, $ionicHistory, $window){
+.controller('LoginCtrl',['$scope', '$state', 'UserService', '$ionicHistory', '$window', 'SSFAlertsService',
+function($scope, $state, UserService, $ionicHistory, $window, SSFAlertsService){
     $scope.user	={};
     var rememberMeValue;
     if($window.localStorage["rememberMe"] === undefined || $window.localStorage["rememberMe"] == "true") {
@@ -40,26 +40,26 @@ function($scope, $state, UserService, $ionicHistory, $window){
                     form.$setPristine();
                 } else {
                     // invalid response
-                    alert("Something went wrong, try again.");
+                    SSFAlertsService.showAlert("Title", "Something went wrong, try again.")
                 }
             }, function(response) {
         // Code 401 corresponds to Unauthorized access, in this case, the email/password combination was incorrect.
         if(response.status === 401)
         {
-            alert("Incorrect username or password");
+            SSFAlertsService.showAlert("Title", "Incorrect username or password");
         }else if(response.data === null) {
             //If the data is null, it means there is no internet connection. 
-            alert("The connection with the server was unsuccessful, check your internet connection and try again later.");
+            SSFAlertsService.showAlert("Title", "The connection with the server was unsuccessful, check your internet connection and try again later.");
         }else {
-            alert("Something went wrong, try again.");
+            SSFAlertsService.showAlert("Title", "Something went wrong, try again.");
         }
     });   
     }
   };
 }])
 
-.controller('RegisterCtrl',['$scope', '$state', 'UserService', '$ionicHistory','$window',
-function($scope, $state, UserService, $ionicHistory, $window){
+.controller('RegisterCtrl',['$scope', '$state', 'UserService', '$ionicHistory','$window','SSFAlertsService',
+function($scope, $state, UserService, $ionicHistory, $window, SSFAlertsService){
     $scope.user={};
     $scope.repeatPassword={};
     
@@ -104,7 +104,7 @@ function($scope, $state, UserService, $ionicHistory, $window){
     $scope.registerSubmitForm=function(form) {
         if(form.$valid) {
           if($scope.user.password != $scope.repeatPassword.password){
-              alert("Passwords do not match, try again.");
+              SSFAlertsService.showAlert("Title", "Passwords do not match, try again.");
           } else {
              UserService.create($scope.user)
                 .then(function(response) {
@@ -120,18 +120,18 @@ function($scope, $state, UserService, $ionicHistory, $window){
                         $state.go('lobby');
                     } else {
                         // invalid response
-                        alert("Something went wrong, try again.");
+                        SSFAlertsService.showAlert("Title", "Something went wrong, try again.");
                     }
                 }, function(response) {
             // Code 422 corresponds to email is already registered.
             if(response.status === 422)
             {
-                alert("Email is already registered");
+                SSFAlertsService.showAlert("Title", "Email is already registered");
             }else if(response.data === null) {
                 //If the data is null, it means there is no internet connection. 
-                alert("The connection with the server was unsuccessful, check your internet connection and try again later.");
+                SSFAlertsService.showAlert("Title", "The connection with the server was unsuccessful, check your internet connection and try again later.");
             }else {
-                alert("Something went wrong, try again.");
+                SSFAlertsService.showAlert("Title", "Something went wrong, try again.");
             }
         });   
         }
@@ -141,9 +141,9 @@ function($scope, $state, UserService, $ionicHistory, $window){
 
 
 .controller('LobbyCtrl',['$scope', '$state', '$ionicHistory',
-'UserService', '$window', 'ServerQuestionService', 'TKQuestionsService', 'TKAnswersService',
+'UserService', '$window', 'ServerQuestionService', 'TKQuestionsService', 'TKAnswersService', 'SSFAlertsService',
     function($scope, $state, $ionicHistory, UserService, $window, ServerQuestionService,
-    TKQuestionsService, TKAnswersService) {
+    TKQuestionsService, TKAnswersService, SSFAlertsService) {
         $scope.$on('$ionicView.enter', function() {
          // Code you want executed every time view is opened
             console.log("reset");
@@ -163,10 +163,10 @@ function($scope, $state, UserService, $ionicHistory, $window){
                     });
                     $state.go('landing');
                 }else {
-                    alert("Could not logout at this moment, try again.");
+                    SSFAlertsService.showAlert("Title", "Could not logout at this moment, try again.");
                 }
                 }, function(response) {
-                    alert("Could not logout at this moment, try again.");
+                    SSFAlertsService.showAlert("Title", "Could not logout at this moment, try again.");
                 });
         };
         
@@ -192,10 +192,23 @@ function($scope, $state, UserService, $ionicHistory, $window){
         }
         function confirmPrompt()
         {
+            /*
             var response = confirm("The questions could not be retrieved at this time, do you want to try again?");
             if (response == true) {
                 getQuestions();
             }
+            */
+            
+            SSFAlertsService.showConfirm("Title","The questions could not be retrieved at this time, do you want to try again?")
+            .then(function(response) {
+                if (response == true) {
+                     //User answered OK
+                     getQuestions();
+                }else {
+                    //User answered Cancel
+                }
+            });
+            
         }
         $scope.takeTestButtonTapped = function()
         {
@@ -208,7 +221,8 @@ function($scope, $state, UserService, $ionicHistory, $window){
 }])
 
 .controller('ResultsCtrl', ['$scope', 'TKAnswersService', '$ionicHistory', '$state', 'TKResultsButtonService',
-function($scope, TKAnswersService, $ionicHistory, $state, TKResultsButtonService ) {
+'SSFAlertsService',
+function($scope, TKAnswersService, $ionicHistory, $state, TKResultsButtonService, SSFAlertsService ) {
     $scope.labels = ["Competing", "Collaborating", "Compromising", "Avoiding", "Accommodating"];
     $scope.$on('$ionicView.enter', function() {
         $scope.shouldShowButton = TKResultsButtonService.getShouldShowMenuButton();
@@ -255,8 +269,9 @@ function($scope, TKAnswersService, $ionicHistory, $state, TKResultsButtonService
     };
 }])
 
-.controller('HistoryCtrl', ['$scope', 'ServerAnswersService', '$window', '$state', 'TKAnswersService', 'TKResultsButtonService',
-    function($scope, ServerAnswersService, $window, $state, TKAnswersService, TKResultsButtonService){
+.controller('HistoryCtrl', ['$scope', 'ServerAnswersService', '$window', '$state', 'TKAnswersService', 
+'TKResultsButtonService', 'SSFAlertsService',
+    function($scope, ServerAnswersService, $window, $state, TKAnswersService, TKResultsButtonService, SSFAlertsService){
         $scope.tests = [];
         performRequest();
         function performRequest()
@@ -277,10 +292,21 @@ function($scope, TKAnswersService, $ionicHistory, $state, TKResultsButtonService
         }
         function confirmPrompt()
         {
+            /*
            var response = confirm("The tests could not be retrieved at the moment, do you want to try again?");
            if (response == true) {
                performRequest();
            }
+           */
+            SSFAlertsService.showConfirm("Title","The tests could not be retrieved at the moment, do you want to try again?")
+            .then(function(response) {
+                if (response == true) {
+                     //User answered OK
+                     performRequest();
+                }else {
+                    //User answered Cancel
+                }
+            });
         }
         $scope.goToResult = function(test)
         {
@@ -304,8 +330,10 @@ function($scope, TKAnswersService, $ionicHistory, $state, TKResultsButtonService
 
 .controller('TestCtrl', ['$scope', 'testInfo', '$stateParams', '$state','$window',
         'TKQuestionsService', 'TKAnswersService', 'ServerAnswersService', '$ionicHistory', 'TKResultsButtonService',
+        'SSFAlertsService',
 function($scope, testInfo, $stateParams, $state, $window,
-        TKQuestionsService, TKAnswersService, ServerAnswersService, $ionicHistory, TKResultsButtonService) {
+        TKQuestionsService, TKAnswersService, ServerAnswersService, $ionicHistory,
+        TKResultsButtonService, SSFAlertsService) {
     //testInfo is passed in the router to obtain the questions
     var qNumber = $stateParams.testID;
     $scope.title = "Question #"+qNumber;
@@ -359,6 +387,7 @@ function($scope, testInfo, $stateParams, $state, $window,
 
     function confirmPrompt()
     {
+        /*
         var response = confirm("The answers could not be saved at the moment, do you want to try again?");
         if (response == true) {
             performRequest();
@@ -368,6 +397,20 @@ function($scope, testInfo, $stateParams, $state, $window,
             });
             $state.go('results');
         }
+        */
+        SSFAlertsService.showConfirm("Title","The answers could not be saved at the moment, do you want to try again?")
+        .then(function(response) {
+            if (response == true) {
+                 //User answered OK
+                 performRequest();
+            }else {
+                //User answered Cancel
+                $ionicHistory.nextViewOptions({
+                    disableBack: true
+                });
+                $state.go('results');
+            }
+        });
     }
 
     testInfo.forEach(function(infoDict){
